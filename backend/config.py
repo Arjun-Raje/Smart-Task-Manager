@@ -1,4 +1,9 @@
+import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Base directory for file uploads
 UPLOAD_DIR = Path(__file__).parent / "uploads"
@@ -16,3 +21,6 @@ ALLOWED_CONTENT_TYPES = {
 
 # Max file size (10MB)
 MAX_FILE_SIZE = 10 * 1024 * 1024
+
+# OpenAI API Key
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

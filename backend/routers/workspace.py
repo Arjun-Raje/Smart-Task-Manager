@@ -10,10 +10,13 @@ from models.user import User
 from models.task import Task
 from models.task_note import TaskNote
 from models.task_attachment import TaskAttachment
+from models.task_summary import TaskSummary
 from db.deps import get_db
 from schemas.task_note import TaskNoteUpdate, TaskNoteResponse
 from schemas.task_attachment import TaskAttachmentResponse
+from schemas.task_summary import TaskSummaryResponse
 from config import UPLOAD_DIR, ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE
+from services.ai_service import generate_task_summary
 
 router = APIRouter(prefix="/tasks/{task_id}/workspace", tags=["Workspace"])
 
@@ -190,3 +193,97 @@ def delete_attachment(
     db.commit()
 
     return {"message": "Attachment deleted"}
+
+
+# ============ AI SUMMARY ENDPOINTS ============
+
+@router.get("/summary")
+def get_saved_summary(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get the saved AI summary for a task."""
+    get_user_task(task_id, db, current_user)
+
+    summary = db.query(TaskSummary).filter(TaskSummary.task_id == task_id).first()
+
+    if not summary:
+        return None
+
+    return {
+        "summary": summary.summary,
+        "key_points": summary.key_points,
+        "concepts": summary.concepts,
+        "action_items": summary.action_items,
+        "study_tips": summary.study_tips,
+        "error": False,
+        "updated_at": summary.updated_at.isoformat() if summary.updated_at else None
+    }
+
+
+@router.post("/summary/generate")
+def generate_and_save_summary(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Generate a new AI summary and save it to the database."""
+    task = get_user_task(task_id, db, current_user)
+
+    # Get the notes for this task
+    note = db.query(TaskNote).filter(TaskNote.task_id == task_id).first()
+    notes_content = note.content if note else ""
+
+    # Get attachments for this task
+    attachments = db.query(TaskAttachment).filter(
+        TaskAttachment.task_id == task_id
+    ).all()
+
+    # Convert attachments to dict format for AI service
+    attachment_data = [
+        {
+            "task_id": att.task_id,
+            "stored_filename": att.stored_filename,
+            "filename": att.filename,
+            "content_type": att.content_type
+        }
+        for att in attachments
+    ]
+
+    # Generate summary using AI (notes + attachments)
+    result = generate_task_summary(task.title, notes_content, attachment_data)
+
+    # If there was an error, return it without saving
+    if result.get("error"):
+        return result
+
+    # Save or update the summary in the database
+    existing_summary = db.query(TaskSummary).filter(TaskSummary.task_id == task_id).first()
+
+    if existing_summary:
+        existing_summary.summary = result.get("summary", "")
+        existing_summary.key_points = result.get("key_points", [])
+        existing_summary.concepts = result.get("concepts", [])
+        existing_summary.action_items = result.get("action_items", [])
+        existing_summary.study_tips = result.get("study_tips", [])
+    else:
+        new_summary = TaskSummary(
+            task_id=task_id,
+            summary=result.get("summary", ""),
+            key_points=result.get("key_points", []),
+            concepts=result.get("concepts", []),
+            action_items=result.get("action_items", []),
+            study_tips=result.get("study_tips", [])
+        )
+        db.add(new_summary)
+
+    db.commit()
+
+    # Return the result with updated_at timestamp
+    result["updated_at"] = None
+    if existing_summary:
+        db.refresh(existing_summary)
+        result["updated_at"] = existing_summary.updated_at.isoformat() if existing_summary.updated_at else None
+
+    return result
