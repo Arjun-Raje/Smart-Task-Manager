@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Task, TaskNote, TaskAttachment } from "../types";
+import type { Task, TaskNote, TaskAttachment, AISummary } from "../types";
 
 const api = axios.create({
   baseURL: "http://127.0.0.1:8000",
@@ -41,6 +41,12 @@ export const workspaceApi = {
 
   deleteAttachment: (taskId: number, attachmentId: number) =>
     api.delete(`/tasks/${taskId}/workspace/attachments/${attachmentId}`),
+
+  getSavedSummary: (taskId: number) =>
+    api.get<AISummary | null>(`/tasks/${taskId}/workspace/summary`),
+
+  generateSummary: (taskId: number) =>
+    api.post<AISummary>(`/tasks/${taskId}/workspace/summary/generate`),
 };
 
 export default api;

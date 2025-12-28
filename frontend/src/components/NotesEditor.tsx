@@ -3,9 +3,10 @@ import { workspaceApi } from "../api/client";
 
 interface Props {
   taskId: number;
+  onNotesChange?: () => void;
 }
 
-export default function NotesEditor({ taskId }: Props) {
+export default function NotesEditor({ taskId, onNotesChange }: Props) {
   const [content, setContent] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -43,6 +44,7 @@ export default function NotesEditor({ taskId }: Props) {
         await workspaceApi.updateNotes(taskId, content);
         setSaveStatus("saved");
         setLastSaved(new Date());
+        onNotesChange?.();
       } catch (error) {
         console.error("Failed to save notes:", error);
         setSaveStatus("error");

@@ -22,3 +22,12 @@ export interface TaskAttachment {
   file_size: number;
   created_at: string;
 }
+
+export interface AISummary {
+  summary: string;
+  key_points: string[];
+  concepts: string[];
+  action_items: string[];
+  study_tips: string[];
+  error: boolean;
+}

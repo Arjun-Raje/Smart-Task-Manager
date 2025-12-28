@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { workspaceApi } from "../api/client";
-import type { Task, TaskAttachment } from "../types";
+import type { Task, TaskAttachment, TaskNote } from "../types";
 import NotesEditor from "../components/NotesEditor";
 import FileUpload from "../components/FileUpload";
+import AISummary from "../components/AISummary";
 import "./TaskWorkspace.css";
 
 export default function TaskWorkspace() {
@@ -11,6 +12,7 @@ export default function TaskWorkspace() {
   const navigate = useNavigate();
   const [task, setTask] = useState<Task | null>(null);
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  const [notes, setNotes] = useState<TaskNote | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +36,15 @@ export default function TaskWorkspace() {
     }
   };
 
+  const fetchNotes = async () => {
+    try {
+      const response = await workspaceApi.getNotes(taskId);
+      setNotes(response.data);
+    } catch (err) {
+      console.error("Failed to fetch notes:", err);
+    }
+  };
+
   useEffect(() => {
     if (!taskId) {
       setError("Invalid task ID");
@@ -43,7 +54,7 @@ export default function TaskWorkspace() {
 
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchTask(), fetchAttachments()]);
+      await Promise.all([fetchTask(), fetchAttachments(), fetchNotes()]);
       setLoading(false);
     };
 
@@ -121,7 +132,7 @@ export default function TaskWorkspace() {
 
         <div className="workspace-grid">
           <div className="notes-card">
-            <NotesEditor taskId={taskId} />
+            <NotesEditor taskId={taskId} onNotesChange={fetchNotes} />
           </div>
 
           <div className="attachments-card">
@@ -131,6 +142,14 @@ export default function TaskWorkspace() {
               onAttachmentsChange={fetchAttachments}
             />
           </div>
+        </div>
+
+        <div className="ai-summary-card">
+          <AISummary
+            taskId={taskId}
+            hasNotes={!!notes && !!notes.content.trim()}
+            hasAttachments={attachments.length > 0}
+          />
         </div>
       </div>
     </div>
