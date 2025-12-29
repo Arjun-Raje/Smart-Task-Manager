@@ -31,3 +31,13 @@ export interface AISummary {
   study_tips: string[];
   error: boolean;
 }
+
+export interface TaskResource {
+  id: number;
+  task_id: number;
+  title: string;
+  url: string;
+  description: string | null;
+  source: string | null;
+  created_at: string;
+}

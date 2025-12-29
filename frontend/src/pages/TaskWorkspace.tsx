@@ -5,6 +5,7 @@ import type { Task, TaskAttachment, TaskNote } from "../types";
 import NotesEditor from "../components/NotesEditor";
 import FileUpload from "../components/FileUpload";
 import AISummary from "../components/AISummary";
+import ResourceSuggestions from "../components/ResourceSuggestions";
 import "./TaskWorkspace.css";
 
 export default function TaskWorkspace() {
@@ -149,6 +150,13 @@ export default function TaskWorkspace() {
             taskId={taskId}
             hasNotes={!!notes && !!notes.content.trim()}
             hasAttachments={attachments.length > 0}
+          />
+        </div>
+
+        <div className="resources-card">
+          <ResourceSuggestions
+            taskId={taskId}
+            hasContent={!!notes?.content.trim() || attachments.length > 0}
           />
         </div>
       </div>

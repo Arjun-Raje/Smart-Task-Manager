@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Task, TaskNote, TaskAttachment, AISummary } from "../types";
+import type { Task, TaskNote, TaskAttachment, AISummary, TaskResource } from "../types";
 
 const api = axios.create({
   baseURL: "http://127.0.0.1:8000",
@@ -45,8 +45,20 @@ export const workspaceApi = {
   getSavedSummary: (taskId: number) =>
     api.get<AISummary | null>(`/tasks/${taskId}/workspace/summary`),
 
+  deleteSummary: (taskId: number) =>
+    api.delete(`/tasks/${taskId}/workspace/summary`),
+
   generateSummary: (taskId: number) =>
     api.post<AISummary>(`/tasks/${taskId}/workspace/summary/generate`),
+
+  getResources: (taskId: number) =>
+    api.get<TaskResource[]>(`/tasks/${taskId}/workspace/resources`),
+
+  deleteResources: (taskId: number) =>
+    api.delete(`/tasks/${taskId}/workspace/resources`),
+
+  generateResources: (taskId: number) =>
+    api.post<{ resources: TaskResource[]; error: string | null }>(`/tasks/${taskId}/workspace/resources/generate`),
 };
 
 export default api;

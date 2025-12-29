@@ -85,7 +85,17 @@ export default function FileUpload({ taskId, attachments, onAttachmentsChange }:
     if (!confirm(`Delete "${attachment.filename}"?`)) return;
 
     try {
+      // Delete the attachment (backend also clears summary/resources)
       await workspaceApi.deleteAttachment(taskId, attachment.id);
+
+      // Also explicitly delete summary and resources from frontend to force refresh
+      try {
+        await workspaceApi.deleteSummary(taskId);
+        await workspaceApi.deleteResources(taskId);
+      } catch {
+        // Ignore errors - these might already be deleted
+      }
+
       onAttachmentsChange();
     } catch (err) {
       console.error("Delete failed:", err);

@@ -24,3 +24,6 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 
 # OpenAI API Key
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+# Perplexity API Key
+PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")

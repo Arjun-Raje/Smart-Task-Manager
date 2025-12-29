@@ -16,27 +16,36 @@ export default function AISummary({ taskId, hasNotes, hasAttachments }: Props) {
 
   const hasContent = hasNotes || hasAttachments;
 
-  // Fetch saved summary on component mount
+  // Fetch saved summary on mount and when attachments change
   useEffect(() => {
+    // Clear existing summary immediately when content changes
+    setSummary(null);
+
     const fetchSavedSummary = async () => {
+      setInitialLoading(true);
       try {
         const response = await workspaceApi.getSavedSummary(taskId);
         if (response.data) {
           setSummary(response.data);
+        } else {
+          setSummary(null);
         }
       } catch (err) {
         console.error("Failed to fetch saved summary:", err);
+        setSummary(null);
       } finally {
         setInitialLoading(false);
       }
     };
 
     fetchSavedSummary();
-  }, [taskId]);
+  }, [taskId, hasAttachments, hasNotes]);  // Refetch when content changes
 
   const generateSummary = async () => {
     setLoading(true);
     setError(null);
+    // Clear old summary before generating new one
+    setSummary(null);
 
     try {
       const response = await workspaceApi.generateSummary(taskId);
