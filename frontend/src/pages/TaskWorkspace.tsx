@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { workspaceApi } from "../api/client";
+import { workspaceApi, shareApi, type TaskPermission } from "../api/client";
 import type { Task, TaskAttachment, TaskNote } from "../types";
 import NotesEditor from "../components/NotesEditor";
 import FileUpload from "../components/FileUpload";
 import AISummary from "../components/AISummary";
 import ResourceSuggestions from "../components/ResourceSuggestions";
+import ShareTaskModal from "../components/ShareTaskModal";
 import "./TaskWorkspace.css";
 
 export default function TaskWorkspace() {
@@ -14,6 +15,8 @@ export default function TaskWorkspace() {
   const [task, setTask] = useState<Task | null>(null);
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [notes, setNotes] = useState<TaskNote | null>(null);
+  const [permission, setPermission] = useState<TaskPermission | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +49,15 @@ export default function TaskWorkspace() {
     }
   };
 
+  const fetchPermission = async () => {
+    try {
+      const response = await shareApi.getMyPermission(taskId);
+      setPermission(response.data);
+    } catch (err) {
+      console.error("Failed to fetch permission:", err);
+    }
+  };
+
   useEffect(() => {
     if (!taskId) {
       setError("Invalid task ID");
@@ -55,12 +67,14 @@ export default function TaskWorkspace() {
 
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchTask(), fetchAttachments(), fetchNotes()]);
+      await Promise.all([fetchTask(), fetchAttachments(), fetchNotes(), fetchPermission()]);
       setLoading(false);
     };
 
     loadData();
   }, [taskId]);
+
+  const canEdit = permission?.is_owner || permission?.permission === "edit";
 
   if (loading) {
     return (
@@ -115,15 +129,30 @@ export default function TaskWorkspace() {
           ← Back to Dashboard
         </button>
         <h1>Task Workspace</h1>
+        {permission?.is_owner && (
+          <button className="share-workspace-btn" onClick={() => setShowShareModal(true)}>
+            Share
+          </button>
+        )}
       </header>
 
       <div className="workspace-content">
         <div className="task-details-card">
           <div className="task-header">
             <h2 className={task.completed ? "completed" : ""}>{task.title}</h2>
-            <span className={`status-badge ${task.completed ? "done" : "pending"}`}>
-              {task.completed ? "Completed" : "In Progress"}
-            </span>
+            <div className="task-badges">
+              {!permission?.is_owner && permission && (
+                <span className="shared-badge">
+                  Shared by {permission.owner_email}
+                  <span className={`permission-level ${permission.permission}`}>
+                    {permission.permission === "edit" ? "Can edit" : "View only"}
+                  </span>
+                </span>
+              )}
+              <span className={`status-badge ${task.completed ? "done" : "pending"}`}>
+                {task.completed ? "Completed" : "In Progress"}
+              </span>
+            </div>
           </div>
           <div className="task-meta">
             <span className="deadline">📅 {formatDeadline(task.deadline)}</span>
@@ -133,7 +162,7 @@ export default function TaskWorkspace() {
 
         <div className="workspace-grid">
           <div className="notes-card">
-            <NotesEditor taskId={taskId} onNotesChange={fetchNotes} />
+            <NotesEditor taskId={taskId} onNotesChange={fetchNotes} canEdit={canEdit} />
           </div>
 
           <div className="attachments-card">
@@ -141,6 +170,7 @@ export default function TaskWorkspace() {
               taskId={taskId}
               attachments={attachments}
               onAttachmentsChange={fetchAttachments}
+              canEdit={canEdit}
             />
           </div>
         </div>
@@ -150,6 +180,7 @@ export default function TaskWorkspace() {
             taskId={taskId}
             hasNotes={!!notes && !!notes.content.trim()}
             hasAttachments={attachments.length > 0}
+            canEdit={canEdit}
           />
         </div>
 
@@ -157,9 +188,19 @@ export default function TaskWorkspace() {
           <ResourceSuggestions
             taskId={taskId}
             hasContent={!!notes?.content.trim() || attachments.length > 0}
+            canEdit={canEdit}
           />
         </div>
       </div>
+
+      {showShareModal && task && (
+        <ShareTaskModal
+          taskId={taskId}
+          taskTitle={task.title}
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }

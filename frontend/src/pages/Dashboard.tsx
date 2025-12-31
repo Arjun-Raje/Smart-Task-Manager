@@ -7,6 +7,7 @@ import TaskForm from "../components/TaskForm";
 import TaskList from "../components/TaskList";
 import TaskCalendar from "../components/TaskCalendar";
 import SuggestionsList from "../components/SuggestionsList";
+import SharedTasksList from "../components/SharedTasksList";
 import "./Dashboard.css";
 
 type ViewMode = "list" | "calendar";
@@ -93,6 +94,8 @@ export default function Dashboard() {
           </div>
 
           <SuggestionsList onTaskChange={fetchTasks} />
+
+          <SharedTasksList />
         </aside>
       </div>
     </div>

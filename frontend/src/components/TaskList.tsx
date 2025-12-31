@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Task } from "../types";
 import api from "../api/client";
+import ShareTaskModal from "./ShareTaskModal";
 
 interface Props {
   tasks: Task[];
@@ -9,6 +11,12 @@ interface Props {
 
 export default function TaskList({ tasks, refreshTasks }: Props) {
   const navigate = useNavigate();
+  const [shareModalTask, setShareModalTask] = useState<Task | null>(null);
+
+  const openShareModal = (task: Task, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShareModalTask(task);
+  };
 
   const toggleComplete = async (task: Task, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -85,6 +93,12 @@ export default function TaskList({ tasks, refreshTasks }: Props) {
                 </div>
               </div>
               <button
+                className="share-button"
+                onClick={(e) => openShareModal(task, e)}
+              >
+                Share
+              </button>
+              <button
                 className="delete-button"
                 onClick={(e) => deleteTask(task.id, e)}
               >
@@ -123,6 +137,12 @@ export default function TaskList({ tasks, refreshTasks }: Props) {
                 </div>
               </div>
               <button
+                className="share-button"
+                onClick={(e) => openShareModal(task, e)}
+              >
+                Share
+              </button>
+              <button
                 className="delete-button"
                 onClick={(e) => deleteTask(task.id, e)}
               >
@@ -131,6 +151,15 @@ export default function TaskList({ tasks, refreshTasks }: Props) {
             </li>
           ))}
         </ul>
+      )}
+
+      {shareModalTask && (
+        <ShareTaskModal
+          taskId={shareModalTask.id}
+          taskTitle={shareModalTask.title}
+          isOpen={true}
+          onClose={() => setShareModalTask(null)}
+        />
       )}
     </div>
   );

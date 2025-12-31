@@ -41,3 +41,22 @@ export interface TaskResource {
   source: string | null;
   created_at: string;
 }
+
+export interface TaskShare {
+  id: number;
+  task_id: number;
+  shared_with_email: string;
+  permission: "view" | "edit";
+  shared_at: string;
+}
+
+export interface SharedTask {
+  id: number;
+  title: string;
+  deadline: string | null;
+  effort: "low" | "medium" | "high";
+  completed: boolean;
+  owner_email: string;
+  permission: "view" | "edit";
+  shared_at: string;
+}

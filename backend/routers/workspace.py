@@ -12,6 +12,7 @@ from models.task_note import TaskNote
 from models.task_attachment import TaskAttachment
 from models.task_summary import TaskSummary
 from models.task_resource import TaskResource
+from models.task_share import TaskShare
 from db.deps import get_db
 from schemas.task_note import TaskNoteUpdate, TaskNoteResponse
 from schemas.task_attachment import TaskAttachmentResponse
@@ -24,14 +25,28 @@ from services.resource_service import find_resources
 router = APIRouter(prefix="/tasks/{task_id}/workspace", tags=["Workspace"])
 
 
-def get_user_task(task_id: int, db: Session, current_user: User) -> Task:
-    """Helper to verify task ownership."""
-    task = db.query(Task).filter(
-        Task.id == task_id,
-        Task.owner_id == current_user.id
-    ).first()
+def get_user_task(task_id: int, db: Session, current_user: User, require_edit: bool = False) -> Task:
+    """Helper to verify task ownership or shared access."""
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    # Owner has full access
+    if task.owner_id == current_user.id:
+        return task
+
+    # Check if shared with user
+    share = db.query(TaskShare).filter(
+        TaskShare.task_id == task_id,
+        TaskShare.shared_with_id == current_user.id
+    ).first()
+
+    if not share:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if require_edit and share.permission != "edit":
+        raise HTTPException(status_code=403, detail="You don't have edit permission")
+
     return task
 
 
@@ -55,7 +70,7 @@ def update_task_notes(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    get_user_task(task_id, db, current_user)
+    get_user_task(task_id, db, current_user, require_edit=True)
 
     note = db.query(TaskNote).filter(TaskNote.task_id == task_id).first()
 
@@ -92,7 +107,7 @@ async def upload_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    get_user_task(task_id, db, current_user)
+    get_user_task(task_id, db, current_user, require_edit=True)
 
     # Validate content type
     if file.content_type not in ALLOWED_CONTENT_TYPES:
@@ -176,7 +191,7 @@ def delete_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    get_user_task(task_id, db, current_user)
+    get_user_task(task_id, db, current_user, require_edit=True)
 
     attachment = db.query(TaskAttachment).filter(
         TaskAttachment.id == attachment_id,
@@ -238,7 +253,7 @@ def delete_summary(
     current_user: User = Depends(get_current_user)
 ):
     """Delete the saved AI summary for a task."""
-    get_user_task(task_id, db, current_user)
+    get_user_task(task_id, db, current_user, require_edit=True)
 
     deleted = db.query(TaskSummary).filter(TaskSummary.task_id == task_id).delete()
     db.commit()
@@ -254,7 +269,7 @@ def generate_and_save_summary(
     current_user: User = Depends(get_current_user)
 ):
     """Generate a FRESH AI summary - always reads current attachments and notes."""
-    task = get_user_task(task_id, db, current_user)
+    task = get_user_task(task_id, db, current_user, require_edit=True)
 
     # STEP 1: Delete any existing summary first
     db.query(TaskSummary).filter(TaskSummary.task_id == task_id).delete()
@@ -342,7 +357,7 @@ def delete_resources(
     current_user: User = Depends(get_current_user)
 ):
     """Delete all saved resources for a task."""
-    get_user_task(task_id, db, current_user)
+    get_user_task(task_id, db, current_user, require_edit=True)
 
     deleted = db.query(TaskResource).filter(TaskResource.task_id == task_id).delete()
     db.commit()
@@ -358,7 +373,7 @@ def generate_resources(
     current_user: User = Depends(get_current_user)
 ):
     """Generate FRESH resource suggestions - always reads current attachments and notes."""
-    task = get_user_task(task_id, db, current_user)
+    task = get_user_task(task_id, db, current_user, require_edit=True)
 
     # STEP 1: Delete any existing resources first
     db.query(TaskResource).filter(TaskResource.task_id == task_id).delete()

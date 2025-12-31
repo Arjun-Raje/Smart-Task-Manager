@@ -6,9 +6,10 @@ interface Props {
   taskId: number;
   hasNotes: boolean;
   hasAttachments: boolean;
+  canEdit?: boolean;
 }
 
-export default function AISummary({ taskId, hasNotes, hasAttachments }: Props) {
+export default function AISummary({ taskId, hasNotes, hasAttachments, canEdit = true }: Props) {
   const [summary, setSummary] = useState<AISummaryType | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -75,13 +76,15 @@ export default function AISummary({ taskId, hasNotes, hasAttachments }: Props) {
     <div className="ai-summary">
       <div className="ai-summary-header">
         <h3>AI Study Guide</h3>
-        <button
-          className="generate-btn"
-          onClick={generateSummary}
-          disabled={loading || !hasContent}
-        >
-          {loading ? "Analyzing..." : summary ? "Regenerate" : "Generate Study Guide"}
-        </button>
+        {canEdit && (
+          <button
+            className="generate-btn"
+            onClick={generateSummary}
+            disabled={loading || !hasContent}
+          >
+            {loading ? "Analyzing..." : summary ? "Regenerate" : "Generate Study Guide"}
+          </button>
+        )}
       </div>
 
       {!hasContent && !summary && (

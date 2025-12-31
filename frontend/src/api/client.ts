@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Task, TaskNote, TaskAttachment, AISummary, TaskResource } from "../types";
+import type { Task, TaskNote, TaskAttachment, AISummary, TaskResource, TaskShare, SharedTask } from "../types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8000",
@@ -59,6 +59,29 @@ export const workspaceApi = {
 
   generateResources: (taskId: number) =>
     api.post<{ resources: TaskResource[]; error: string | null }>(`/tasks/${taskId}/workspace/resources/generate`),
+};
+
+export interface TaskPermission {
+  permission: "owner" | "view" | "edit";
+  owner_email: string;
+  is_owner: boolean;
+}
+
+export const shareApi = {
+  shareTask: (taskId: number, email: string, permission: string) =>
+    api.post<TaskShare>(`/tasks/${taskId}/share`, { email, permission }),
+
+  getShares: (taskId: number) =>
+    api.get<TaskShare[]>(`/tasks/${taskId}/shares`),
+
+  revokeShare: (taskId: number, shareId: number) =>
+    api.delete(`/tasks/${taskId}/share/${shareId}`),
+
+  getSharedWithMe: () =>
+    api.get<SharedTask[]>('/shared-with-me'),
+
+  getMyPermission: (taskId: number) =>
+    api.get<TaskPermission>(`/tasks/${taskId}/my-permission`),
 };
 
 export default api;

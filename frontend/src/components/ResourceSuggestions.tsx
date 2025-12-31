@@ -5,9 +5,10 @@ import type { TaskResource } from "../types";
 interface Props {
   taskId: number;
   hasContent: boolean;
+  canEdit?: boolean;
 }
 
-export default function ResourceSuggestions({ taskId, hasContent }: Props) {
+export default function ResourceSuggestions({ taskId, hasContent, canEdit = true }: Props) {
   const [resources, setResources] = useState<TaskResource[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -88,21 +89,23 @@ export default function ResourceSuggestions({ taskId, hasContent }: Props) {
     <div className="resources-section">
       <div className="resources-header">
         <h3>Suggested Resources</h3>
-        <button
-          className="refresh-btn"
-          onClick={generateResources}
-          disabled={loading || !hasContent}
-          title={resources.length > 0 ? "Find new resources" : "Find resources"}
-        >
-          {loading ? (
-            <span className="btn-loading">Finding...</span>
-          ) : (
-            <>
-              <span className="refresh-icon">↻</span>
-              {resources.length > 0 ? "Refresh" : "Find Resources"}
-            </>
-          )}
-        </button>
+        {canEdit && (
+          <button
+            className="refresh-btn"
+            onClick={generateResources}
+            disabled={loading || !hasContent}
+            title={resources.length > 0 ? "Find new resources" : "Find resources"}
+          >
+            {loading ? (
+              <span className="btn-loading">Finding...</span>
+            ) : (
+              <>
+                <span className="refresh-icon">↻</span>
+                {resources.length > 0 ? "Refresh" : "Find Resources"}
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {!hasContent && resources.length === 0 && (

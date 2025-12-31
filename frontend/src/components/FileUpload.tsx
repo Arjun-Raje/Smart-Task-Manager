@@ -6,9 +6,10 @@ interface Props {
   taskId: number;
   attachments: TaskAttachment[];
   onAttachmentsChange: () => void;
+  canEdit?: boolean;
 }
 
-export default function FileUpload({ taskId, attachments, onAttachmentsChange }: Props) {
+export default function FileUpload({ taskId, attachments, onAttachmentsChange, canEdit = true }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,31 +119,38 @@ export default function FileUpload({ taskId, attachments, onAttachmentsChange }:
     <div className="file-upload">
       <h3>Attachments</h3>
 
-      <div
-        className={`drop-zone ${isDragging ? "dragging" : ""} ${uploading ? "uploading" : ""}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
-          onChange={handleFileSelect}
-          style={{ display: "none" }}
-        />
-        {uploading ? (
-          <span>Uploading...</span>
-        ) : (
-          <>
-            <span className="drop-icon">📁</span>
-            <span>Drop files here or click to upload</span>
-            <span className="file-types">PDF, PNG, JPG, GIF, WEBP (max 10MB)</span>
-          </>
-        )}
-      </div>
+      {canEdit ? (
+        <div
+          className={`drop-zone ${isDragging ? "dragging" : ""} ${uploading ? "uploading" : ""}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".pdf,.png,.jpg,.jpeg,.gif,.webp"
+            onChange={handleFileSelect}
+            style={{ display: "none" }}
+          />
+          {uploading ? (
+            <span>Uploading...</span>
+          ) : (
+            <>
+              <span className="drop-icon">📁</span>
+              <span>Drop files here or click to upload</span>
+              <span className="file-types">PDF, PNG, JPG, GIF, WEBP (max 10MB)</span>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="drop-zone disabled">
+          <span className="drop-icon">🔒</span>
+          <span>View-only mode</span>
+        </div>
+      )}
 
       {error && <div className="upload-error">{error}</div>}
 
@@ -163,13 +171,15 @@ export default function FileUpload({ taskId, attachments, onAttachmentsChange }:
                 >
                   ⬇️
                 </button>
-                <button
-                  className="action-btn delete"
-                  onClick={() => handleDelete(attachment)}
-                  title="Delete"
-                >
-                  🗑️
-                </button>
+                {canEdit && (
+                  <button
+                    className="action-btn delete"
+                    onClick={() => handleDelete(attachment)}
+                    title="Delete"
+                  >
+                    🗑️
+                  </button>
+                )}
               </div>
             </li>
           ))}

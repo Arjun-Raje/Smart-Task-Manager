@@ -4,9 +4,10 @@ import { workspaceApi } from "../api/client";
 interface Props {
   taskId: number;
   onNotesChange?: () => void;
+  canEdit?: boolean;
 }
 
-export default function NotesEditor({ taskId, onNotesChange }: Props) {
+export default function NotesEditor({ taskId, onNotesChange, canEdit = true }: Props) {
   const [content, setContent] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -30,7 +31,7 @@ export default function NotesEditor({ taskId, onNotesChange }: Props) {
   }, [taskId]);
 
   useEffect(() => {
-    if (isInitialLoad.current) return;
+    if (isInitialLoad.current || !canEdit) return;
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -56,7 +57,7 @@ export default function NotesEditor({ taskId, onNotesChange }: Props) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [content, taskId]);
+  }, [content, taskId, canEdit]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -75,8 +76,9 @@ export default function NotesEditor({ taskId, onNotesChange }: Props) {
       <textarea
         className="notes-textarea"
         value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="Write your notes here... They will auto-save as you type."
+        onChange={(e) => canEdit && setContent(e.target.value)}
+        placeholder={canEdit ? "Write your notes here... They will auto-save as you type." : "View-only mode"}
+        readOnly={!canEdit}
       />
     </div>
   );

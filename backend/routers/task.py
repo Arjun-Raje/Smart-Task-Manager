@@ -4,6 +4,7 @@ from auth.deps import get_current_user
 from models.user import User
 from db.deps import get_db
 from models.task import Task
+from models.task_share import TaskShare
 from schemas.task import TaskCreate, TaskUpdate, TaskResponse
 from services.suggestions import rank_tasks
 
@@ -35,12 +36,22 @@ def get_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    task = db.query(Task).filter(
-        Task.id == task_id,
-        Task.owner_id == current_user.id
-    ).first()
+    task = db.query(Task).filter(Task.id == task_id).first()
 
     if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Check if user owns the task
+    if task.owner_id == current_user.id:
+        return task
+
+    # Check if task is shared with user
+    share = db.query(TaskShare).filter(
+        TaskShare.task_id == task_id,
+        TaskShare.shared_with_id == current_user.id
+    ).first()
+
+    if not share:
         raise HTTPException(status_code=404, detail="Task not found")
 
     return task
