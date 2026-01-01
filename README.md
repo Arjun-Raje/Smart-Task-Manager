@@ -4,20 +4,30 @@ A full-stack task management application with AI-powered study assistance. Built
 
 ## Features
 
+### Core Features
 - **User Authentication** - Secure login and registration system with JWT tokens
 - **Task Management** - Create, edit, and track tasks with deadlines and effort levels
-- **Calendar View** - Visualize tasks on an interactive calendar
-- **Task Workspace** - Dedicated workspace for each task with:
-  - Rich text notes with auto-save
-  - File attachments (PDFs, images)
-  - AI-powered study guide generation
-- **AI Study Guide** - Analyzes your notes and PDF attachments to generate:
-  - Comprehensive summaries
-  - Key points and concepts
-  - Action items
-  - Study tips
-- **Dark Mode** - Toggle between light and dark themes
-- **Smart Suggestions** - AI-powered task prioritization
+- **Calendar View** - Visualize tasks on an interactive calendar (view preference persists)
+- **Dark Mode UI** - Modern dark theme throughout the application
+
+### Task Workspace
+Each task has a dedicated workspace with:
+- **Rich Text Notes** - Auto-saving notes editor
+- **File Attachments** - Upload PDFs and images as study materials
+- **AI Study Guide** - Generates comprehensive summaries, key points, concepts, action items, and study tips
+- **Resource Suggestions** - AI-powered web search for relevant study materials using Perplexity API
+- **Assignment Solver** - Upload assignments (PDF/image) and get AI-generated solution approaches based on your notes
+
+### Collaboration
+- **Task Sharing** - Share tasks with other users via email
+- **Permission Levels** - Choose between view-only or edit access
+- **Email Notifications** - Automatic email when someone shares a task with you
+- **Deadline Reminders** - Email notifications 1 hour before task deadlines
+
+### Smart Features
+- **AI Task Suggestions** - Intelligent task prioritization recommendations
+- **PDF Text Extraction** - Automatically extracts text from uploaded PDFs for AI analysis
+- **Image Analysis** - Vision AI support for image-based assignments
 
 ## Tech Stack
 
@@ -25,14 +35,17 @@ A full-stack task management application with AI-powered study assistance. Built
 - React 18 with TypeScript
 - React Router for navigation
 - Axios for API requests
-- CSS with dark mode support
+- CSS with dark mode design
 
 ### Backend
 - FastAPI (Python)
 - SQLAlchemy ORM
-- SQLite databasea
+- SQLite database (PostgreSQL for production)
 - JWT authentication
-- OpenAI API integration
+- OpenAI API (GPT-4o-mini) for AI features
+- Perplexity API for resource suggestions
+- APScheduler for background tasks
+- SMTP for email notifications
 - PyPDF2 for PDF text extraction
 
 ## Prerequisites
@@ -40,6 +53,8 @@ A full-stack task management application with AI-powered study assistance. Built
 - Node.js 18+ and npm
 - Python 3.10+
 - OpenAI API key
+- Perplexity API key (optional, for resource suggestions)
+- Gmail account with App Password (optional, for email notifications)
 
 ## Installation
 
@@ -65,10 +80,11 @@ source venv/bin/activate
 venv\Scripts\activate
 
 # Install dependencies
-pip install fastapi uvicorn sqlalchemy python-jose passlib bcrypt python-multipart PyPDF2 openai python-dotenv
+pip install -r requirements.txt
 
-# Create .env file with your OpenAI API key
-echo "OPENAI_API_KEY=your-api-key-here" > .env
+# Create .env file
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
 ### 3. Frontend Setup
@@ -105,9 +121,23 @@ The application will be available at `http://localhost:5173`
 
 ### Backend (.env)
 
-| Variable | Description |
-|----------|-------------|
-| `OPENAI_API_KEY` | Your OpenAI API key for AI features |
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OPENAI_API_KEY` | OpenAI API key for AI features | Yes |
+| `PERPLEXITY_API_KEY` | Perplexity API key for resource suggestions | No |
+| `SMTP_HOST` | SMTP server hostname (default: smtp.gmail.com) | No |
+| `SMTP_PORT` | SMTP server port (default: 587) | No |
+| `SMTP_USER` | Email address for sending notifications | No |
+| `SMTP_PASSWORD` | Email password or app password | No |
+| `EMAIL_FROM_NAME` | Sender name in emails (default: Task Manager) | No |
+| `FRONTEND_URL` | Frontend URL for email links (default: http://localhost:5173) | No |
+
+### Gmail Setup for Email Notifications
+
+1. Go to [Google Account Security](https://myaccount.google.com/security)
+2. Enable 2-Step Verification
+3. Create an App Password: Security > App passwords > Select "Mail" > Generate
+4. Use the 16-character password as `SMTP_PASSWORD`
 
 ## API Endpoints
 
@@ -130,29 +160,74 @@ The application will be available at `http://localhost:5173`
 - `DELETE /tasks/{id}/workspace/attachments/{attachment_id}` - Delete attachment
 - `GET /tasks/{id}/workspace/summary` - Get saved AI summary
 - `POST /tasks/{id}/workspace/summary/generate` - Generate new AI summary
+- `GET /tasks/{id}/workspace/resources` - Get saved resources
+- `POST /tasks/{id}/workspace/resources/generate` - Find new resources
+- `GET /tasks/{id}/workspace/assignments` - Get assignment solutions
+- `POST /tasks/{id}/workspace/assignments/solve` - Upload and solve assignment
+- `DELETE /tasks/{id}/workspace/assignments/{solution_id}` - Delete solution
+
+### Sharing
+- `POST /tasks/{id}/share` - Share task with another user
+- `GET /tasks/{id}/shares` - List all shares for a task
+- `DELETE /tasks/{id}/share/{share_id}` - Revoke share
+- `GET /tasks/{id}/my-permission` - Get current user's permission
+- `GET /shared-with-me` - List tasks shared with current user
 
 ## Project Structure
 
 ```
 task-manager/
 ├── backend/
-│   ├── auth/           # Authentication logic
-│   ├── db/             # Database configuration
-│   ├── models/         # SQLAlchemy models
-│   ├── routers/        # API route handlers
-│   ├── schemas/        # Pydantic schemas
-│   ├── services/       # Business logic (AI service)
-│   ├── uploads/        # File upload storage
-│   ├── config.py       # App configuration
-│   ├── main.py         # FastAPI app entry point
-│   └── .env            # Environment variables
+│   ├── auth/              # Authentication logic
+│   ├── db/                # Database configuration
+│   ├── models/            # SQLAlchemy models
+│   │   ├── user.py
+│   │   ├── task.py
+│   │   ├── task_note.py
+│   │   ├── task_attachment.py
+│   │   ├── task_summary.py
+│   │   ├── task_resource.py
+│   │   ├── task_share.py
+│   │   └── assignment_solution.py
+│   ├── routers/           # API route handlers
+│   │   ├── auth.py
+│   │   ├── task.py
+│   │   ├── workspace.py
+│   │   └── share.py
+│   ├── schemas/           # Pydantic schemas
+│   ├── services/          # Business logic
+│   │   ├── ai_service.py          # AI summary generation
+│   │   ├── resource_service.py    # Resource suggestions
+│   │   ├── assignment_service.py  # Assignment solving
+│   │   ├── email_service.py       # Email notifications
+│   │   └── scheduler_service.py   # Background tasks
+│   ├── uploads/           # File upload storage
+│   ├── config.py          # App configuration
+│   ├── main.py            # FastAPI app entry point
+│   ├── requirements.txt   # Python dependencies
+│   └── .env               # Environment variables
 ├── frontend/
 │   ├── src/
-│   │   ├── api/        # API client
-│   │   ├── components/ # React components
-│   │   ├── pages/      # Page components
-│   │   ├── types.ts    # TypeScript types
-│   │   └── App.tsx     # Main app component
+│   │   ├── api/           # API client
+│   │   ├── auth/          # Authentication context
+│   │   ├── components/    # React components
+│   │   │   ├── AISummary.tsx
+│   │   │   ├── AssignmentSolver.tsx
+│   │   │   ├── FileUpload.tsx
+│   │   │   ├── NotesEditor.tsx
+│   │   │   ├── ResourceSuggestions.tsx
+│   │   │   ├── ShareTaskModal.tsx
+│   │   │   ├── SharedTasksList.tsx
+│   │   │   ├── TaskCalendar.tsx
+│   │   │   ├── TaskForm.tsx
+│   │   │   └── TaskList.tsx
+│   │   ├── pages/         # Page components
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── Login.tsx
+│   │   │   ├── Register.tsx
+│   │   │   └── TaskWorkspace.tsx
+│   │   ├── types.ts       # TypeScript types
+│   │   └── App.tsx        # Main app component
 │   └── package.json
 └── README.md
 ```
@@ -174,6 +249,8 @@ gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
 pip install psycopg2-binary
 # Update database URL in db/database.py
 ```
+
+4. Configure environment variables for production
 
 ### Frontend (Production)
 
@@ -199,6 +276,10 @@ services:
       - "8000:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - FRONTEND_URL=${FRONTEND_URL}
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/task_manager.db:/app/task_manager.db
