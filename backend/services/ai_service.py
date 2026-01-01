@@ -220,7 +220,8 @@ IMPORTANT INSTRUCTIONS:
 3. Be DETAILED and THOROUGH - this summary should help the student study
 4. Include actual content from the PDFs - quotes, statistics, key arguments, etc.
 5. If there are multiple documents, synthesize information across all of them
-6. Make the key_points comprehensive enough that a student could study from them"""
+6. Make the key_points comprehensive enough that a student could study from them
+7. for the key points and concepts section make sure that you make it very detailed and make sure that you properly teach the user about all the topics in all the documents so they can apply it to any questions they get"""
 
     try:
         response = client.chat.completions.create(

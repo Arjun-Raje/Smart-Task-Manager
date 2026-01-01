@@ -21,6 +21,9 @@ from schemas.task_resource import TaskResourceResponse
 from config import UPLOAD_DIR, ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE
 from services.ai_service import generate_task_summary, extract_pdf_text
 from services.resource_service import find_resources
+from services.assignment_service import solve_assignment
+from models.assignment_solution import AssignmentSolution
+from schemas.assignment_solution import AssignmentSolutionResponse
 
 router = APIRouter(prefix="/tasks/{task_id}/workspace", tags=["Workspace"])
 
@@ -475,3 +478,178 @@ def generate_resources(
         ],
         "error": None
     }
+
+
+# ============ ASSIGNMENT SOLVER ENDPOINTS ============
+
+@router.get("/assignments", response_model=list[AssignmentSolutionResponse])
+def get_assignment_solutions(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all saved assignment solutions for a task."""
+    get_user_task(task_id, db, current_user)
+
+    solutions = db.query(AssignmentSolution).filter(
+        AssignmentSolution.task_id == task_id
+    ).order_by(AssignmentSolution.created_at.desc()).all()
+
+    return solutions
+
+
+@router.get("/assignments/{solution_id}", response_model=AssignmentSolutionResponse)
+def get_assignment_solution(
+    task_id: int,
+    solution_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get a specific assignment solution."""
+    get_user_task(task_id, db, current_user)
+
+    solution = db.query(AssignmentSolution).filter(
+        AssignmentSolution.id == solution_id,
+        AssignmentSolution.task_id == task_id
+    ).first()
+
+    if not solution:
+        raise HTTPException(status_code=404, detail="Assignment solution not found")
+
+    return solution
+
+
+@router.post("/assignments/solve")
+async def solve_assignment_endpoint(
+    task_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload an assignment and generate solution approaches using task notes as context."""
+    task = get_user_task(task_id, db, current_user, require_edit=True)
+
+    # Validate content type
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="File type not allowed. Allowed types: PDF, PNG, JPG, GIF, WEBP"
+        )
+
+    # Read file content
+    content = await file.read()
+    file_size = len(content)
+
+    # Validate file size
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
+        )
+
+    # Generate unique stored filename
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    stored_filename = f"assignment_{uuid.uuid4()}{ext}"
+
+    # Create task-specific directory
+    task_upload_dir = UPLOAD_DIR / str(task_id)
+    task_upload_dir.mkdir(exist_ok=True)
+
+    # Save file
+    file_path = task_upload_dir / stored_filename
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    print(f"[Assignment Solve] Saved assignment file: {file_path}")
+
+    # Get notes content
+    note = db.query(TaskNote).filter(TaskNote.task_id == task_id).first()
+    notes_content = note.content if note else ""
+
+    # Get context attachments (study materials)
+    attachments = db.query(TaskAttachment).filter(
+        TaskAttachment.task_id == task_id
+    ).all()
+
+    context_attachments = []
+    for att in attachments:
+        att_path = UPLOAD_DIR / str(task_id) / att.stored_filename
+        if att_path.exists():
+            context_attachments.append({
+                "task_id": att.task_id,
+                "stored_filename": att.stored_filename,
+                "filename": att.filename,
+                "content_type": att.content_type
+            })
+
+    print(f"[Assignment Solve] Using {len(context_attachments)} context attachments")
+    print(f"[Assignment Solve] Notes content: {len(notes_content)} chars")
+
+    # Generate solutions
+    result = solve_assignment(
+        task_title=task.title,
+        notes_content=notes_content,
+        context_attachments=context_attachments,
+        assignment_file_path=file_path,
+        assignment_content_type=file.content_type,
+        assignment_filename=file.filename or "assignment"
+    )
+
+    if result.get("error"):
+        # Clean up the uploaded file if there was an error
+        if file_path.exists():
+            os.remove(file_path)
+        return {"questions": [], "error": result["error"]}
+
+    # Save the solution to database
+    solution = AssignmentSolution(
+        task_id=task_id,
+        assignment_filename=file.filename or "assignment",
+        assignment_stored_filename=stored_filename,
+        questions=result.get("questions", [])
+    )
+    db.add(solution)
+    db.commit()
+    db.refresh(solution)
+
+    print(f"[Assignment Solve] Saved solution with {len(result.get('questions', []))} questions")
+
+    return {
+        "id": solution.id,
+        "task_id": solution.task_id,
+        "assignment_filename": solution.assignment_filename,
+        "questions": solution.questions,
+        "created_at": solution.created_at.isoformat() if solution.created_at else None,
+        "error": None
+    }
+
+
+@router.delete("/assignments/{solution_id}")
+def delete_assignment_solution(
+    task_id: int,
+    solution_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete an assignment solution."""
+    get_user_task(task_id, db, current_user, require_edit=True)
+
+    solution = db.query(AssignmentSolution).filter(
+        AssignmentSolution.id == solution_id,
+        AssignmentSolution.task_id == task_id
+    ).first()
+
+    if not solution:
+        raise HTTPException(status_code=404, detail="Assignment solution not found")
+
+    # Delete the assignment file from disk
+    file_path = UPLOAD_DIR / str(task_id) / solution.assignment_stored_filename
+    if file_path.exists():
+        os.remove(file_path)
+        print(f"[Assignment Delete] Removed file: {file_path}")
+
+    # Delete database record
+    db.delete(solution)
+    db.commit()
+
+    return {"message": "Assignment solution deleted"}

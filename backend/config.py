@@ -27,3 +27,14 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # Perplexity API Key
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
+
+# Email Configuration
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+EMAIL_FROM = os.getenv("EMAIL_FROM", SMTP_USER)
+EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "Task Manager")
+
+# Frontend URL for email links
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")

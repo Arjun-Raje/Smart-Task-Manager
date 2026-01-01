@@ -6,6 +6,7 @@ import NotesEditor from "../components/NotesEditor";
 import FileUpload from "../components/FileUpload";
 import AISummary from "../components/AISummary";
 import ResourceSuggestions from "../components/ResourceSuggestions";
+import AssignmentSolver from "../components/AssignmentSolver";
 import ShareTaskModal from "../components/ShareTaskModal";
 import "./TaskWorkspace.css";
 
@@ -186,6 +187,14 @@ export default function TaskWorkspace() {
 
         <div className="resources-card">
           <ResourceSuggestions
+            taskId={taskId}
+            hasContent={!!notes?.content.trim() || attachments.length > 0}
+            canEdit={canEdit}
+          />
+        </div>
+
+        <div className="assignment-solver-card">
+          <AssignmentSolver
             taskId={taskId}
             hasContent={!!notes?.content.trim() || attachments.length > 0}
             canEdit={canEdit}

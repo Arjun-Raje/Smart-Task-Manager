@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Task, TaskNote, TaskAttachment, AISummary, TaskResource, TaskShare, SharedTask } from "../types";
+import type { Task, TaskNote, TaskAttachment, AISummary, TaskResource, TaskShare, SharedTask, AssignmentSolution } from "../types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8000",
@@ -59,6 +59,20 @@ export const workspaceApi = {
 
   generateResources: (taskId: number) =>
     api.post<{ resources: TaskResource[]; error: string | null }>(`/tasks/${taskId}/workspace/resources/generate`),
+
+  getAssignmentSolutions: (taskId: number) =>
+    api.get<AssignmentSolution[]>(`/tasks/${taskId}/workspace/assignments`),
+
+  solveAssignment: (taskId: number, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<AssignmentSolution>(`/tasks/${taskId}/workspace/assignments/solve`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
+  deleteAssignmentSolution: (taskId: number, solutionId: number) =>
+    api.delete(`/tasks/${taskId}/workspace/assignments/${solutionId}`),
 };
 
 export interface TaskPermission {

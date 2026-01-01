@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from routers.auth import router as auth_router
 from db.database import engine, Base
@@ -7,6 +8,7 @@ from routers.workspace import router as workspace_router
 from routers.share import router as share_router
 import models
 from fastapi.middleware.cors import CORSMiddleware
+from services.scheduler_service import start_scheduler, stop_scheduler
 
 # Get frontend URL from environment, with local dev fallback
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
@@ -16,7 +18,18 @@ origins = [
     frontend_url,  # production Vercel URL
 ]
 
-app = FastAPI(title="Smart Task Manager API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle - start/stop scheduler."""
+    # Startup
+    start_scheduler()
+    yield
+    # Shutdown
+    stop_scheduler()
+
+
+app = FastAPI(title="Smart Task Manager API", lifespan=lifespan)
 
 # Add CORS middleware first (before routes)
 app.add_middleware(

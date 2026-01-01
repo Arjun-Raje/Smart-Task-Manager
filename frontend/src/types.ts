@@ -60,3 +60,21 @@ export interface SharedTask {
   permission: "view" | "edit";
   shared_at: string;
 }
+
+export interface QuestionSolution {
+  question_number: string;
+  question_text: string;
+  approach: string;
+  key_concepts: string[];
+  solution_steps: string[];
+  tips: string;
+}
+
+export interface AssignmentSolution {
+  id: number;
+  task_id: number;
+  assignment_filename: string;
+  questions: QuestionSolution[];
+  created_at: string;
+  error?: string | null;
+}

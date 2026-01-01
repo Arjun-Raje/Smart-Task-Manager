@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from db.deps import get_db
@@ -7,6 +7,7 @@ from models.user import User
 from models.task import Task
 from models.task_share import TaskShare
 from schemas.task_share import TaskShareCreate, TaskShareResponse, SharedTaskResponse
+from services.email_service import send_task_shared_notification
 
 router = APIRouter(tags=["Share"])
 
@@ -15,6 +16,7 @@ router = APIRouter(tags=["Share"])
 def share_task(
     task_id: int,
     share_data: TaskShareCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -57,6 +59,16 @@ def share_task(
     db.add(new_share)
     db.commit()
     db.refresh(new_share)
+
+    # Send email notification in background
+    background_tasks.add_task(
+        send_task_shared_notification,
+        recipient_email=target_user.email,
+        sharer_email=current_user.email,
+        task_title=task.title,
+        task_id=task_id,
+        permission=share_data.permission
+    )
 
     return TaskShareResponse(
         id=new_share.id,
